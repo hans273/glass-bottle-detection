@@ -52,6 +52,3 @@ def print_receipt_func(large_bottle, small_bottle):
     except Exception as e:
         print(f"Error: {e}")
 
-
-
-# print_receipt_func(3,3)
