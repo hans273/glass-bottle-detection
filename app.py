@@ -3,6 +3,7 @@ from ultralytics import YOLO
 import cv2
 import cvzone
 import math
+import time
 from sort import *
 from threading import *
 
@@ -16,7 +17,10 @@ customtkinter.set_appearance_mode("dark")  # Modes: system (default), light, dar
 customtkinter.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
 
 app = customtkinter.CTk()  # create CTk window like you do with the Tk window
-app.geometry("1024x600")
+# app.attributes('-zoomed', True)
+# app.attributes('-fullscreen', True)
+app.geometry(f"{app.winfo_screenwidth()}x{app.winfo_screenheight()}")
+app.attributes('-fullscreen', True)
 
 large_bottle_image = Image.open('./images/large-bottle.png')
 small_bottle_image = Image.open('./images/small-bottle.png')
@@ -38,30 +42,30 @@ small_bottle_counter = [0]
 
 tracked_ids = set()
 bottle_count = [0]
-scanning = [True]
+
+thread_event = Event()
 
 def scanner():
+    global cap
     cap = cv2.VideoCapture(0)
-    global scanning
-
-    model = YOLO('models/epochs300_170.pt', task='detect')
+    # model = YOLO('models/epochs300_170.pt', task='detect')
     tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.5)
 
-    ncnn_model = YOLO("models/epochs300_170_ncnn_model")
+    ncnn_model = YOLO("models/epochs300_300_ncnn_model", task="detect")
     
-    if not scanning[0]:
-        cap.release()
-        cv2.destroyAllWindows()
-
-    while scanning[0]:
+    while True:
         success, img = cap.read()
 
         # AI MODEL
         results = ncnn_model(img)
-
         detections = np.empty((0, 5))
 
-        
+        print('here')
+        if thread_event.is_set():
+            cap.release()
+            cv2.destroyAllWindows()
+            print('RELEASSEE')
+            break
 
         for r in results:
             boxes = r.boxes
@@ -92,9 +96,9 @@ def scanner():
                 x1, y1, x2, y2, id = result
                 x1, y1, x2, y2, id = int(x1), int(y1), int(x2), int(y2), int(id)
                 bbox = x1, y1, x2 - x1, y2 - y1
-                cv2.rectangle(img, (x1,y1), (x2,y2), (0,255,0), thickness=2)
                 # cv2.rectangle(img, (x1,y1-70), (x1+200,y1), (0,255,0), thickness=-1)
                 # cv2.putText(img, f'{int(id)} {tmp_max}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,255), thickness=5, lineType=cv2.LINE_8)
+                cv2.rectangle(img, (x1,y1), (x2,y2), (0,255,0), thickness=2)
                 cvzone.putTextRect(img, f'{int(id)} {tmp_max}', (x1, y1 - 10))
                 print("RESULTS: ", detections)
                 if id not in tracked_ids:
@@ -107,14 +111,16 @@ def scanner():
                     else:
                         large_bottle_counter[0] += 1
                         large_bottle_count.configure(text=f"Large Bottle \n {large_bottle_counter[0]}")
-            
+            # time.sleep(0.1)
             cvzone.putTextRect(img, f'Glass Bottles: {bottle_count[0]}', (10, 50))
-            cv2.imshow('Image', img)
-            cv2.waitKey(1)
+            
+            # cv2.imshow('Image', img)
+            # cv2.waitKey(1)    
     
-   
 
-thread1 = Thread(target=scanner) 
+counter = 0
+thread1 = Thread(target=scanner, daemon=True)
+thread1.name = counter 
 
 def start_scan():
     print("button pressed")
@@ -125,8 +131,8 @@ def start_scan():
     image_large_label.configure(font=("Segoe UI Semibold", 32))
     image_large_label.place(relx=large_bottle_image_pos['relx'], rely=large_bottle_image_pos['rely'])
     image_small_label.place(relx=small_bottle_image_pos['relx'], rely=small_bottle_image_pos['rely'])
-    thread1 = Thread(target=scanner)
-    thread1.start() 
+    # thread1 = Thread(target=scanner)
+    thread1.start()
 
 def stop_scan():
     print("button 2 pressed")
@@ -139,7 +145,12 @@ def stop_scan():
 
     image_large_label.place(relx=out_rel['relx_out'], rely=out_rel['relx_out'])
     image_small_label.place(relx=out_rel['relx_out'], rely=out_rel['relx_out'])
-    scanning[0] = False
+    
+    global thread_event
+    global thread1
+    thread_event.set()
+    time.sleep(0.1)
+    # print("IS SET? ", thread_event.is_set())
     thread1.join()
     
 
@@ -148,7 +159,7 @@ def print_receipt():
     start.place(anchor=customtkinter.CENTER, relx=start_button['relx'], rely=start_button['rely'])
     continue_button.place(relx=out_rel['relx_out'], rely=out_rel['rely_out'])
     print_button.place(relx=out_rel['relx_out'], rely=out_rel['rely_out'])
-    scanning[0] = False
+    thread1 = Thread(target=scanner, daemon=True) 
     print_receipt_func(large_bottle_counter[0], small_bottle_counter[0])
 
 
@@ -165,9 +176,18 @@ def continue_scan():
 
     image_large_label.place(relx=large_bottle_image_pos['relx'], rely=large_bottle_image_pos['rely'])
     image_small_label.place(relx=small_bottle_image_pos['relx'], rely=small_bottle_image_pos['rely'])
-    scanning[0] = True
-    thread1 = Thread(target=scanner)
+    
+    #THREADS
+    global counter
+    global thread1
+    global thread_event
+    
+    counter += 1
+    thread1 = Thread(target=scanner, daemon=True)
+    thread1.name = counter
+    thread_event.clear()
     thread1.start()
+    time.sleep(0.1)
 
 
 # Use CTkButton instead of tkinter Button

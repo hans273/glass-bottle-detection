@@ -16,6 +16,7 @@ product_id = 0x5840
 import secrets
 import string
 from Crypto.Random import random
+from APICalls import addReward
 
 def print_receipt_func(large_bottle, small_bottle):
     try: 
@@ -23,6 +24,7 @@ def print_receipt_func(large_bottle, small_bottle):
         divider = "******************************"
         large_rate = 0.5
         small_rate = 0.25
+        
         col3 = "{:<15} {:>4} {:>8}"
         Gooj.set(align='center')
         Gooj.image("./images/cen1.png")
@@ -39,16 +41,35 @@ def print_receipt_func(large_bottle, small_bottle):
         Gooj.set_with_default()
         Gooj.set(align='center', font='a', bold=True, width=6)
         print(large_points + small_points)
+        total_amount = (large_points + small_points)*3
         Gooj.textln(f"Total Points: {((large_points + small_points))}")
-        Gooj.textln(f"Total Price: {((large_points + small_points)*3)}")
+        Gooj.textln(f"Total Price: {(total_amount)}")
         Gooj.textln(divider)
         Gooj.ln()
         alphabet = string.ascii_letters + string.digits
         orderId = ''.join(random.sample(alphabet, 30))
         Gooj.qr(orderId, size=12, center=True)
-
+        body = {
+            "qrCode": orderId, 
+            "bottles": {
+                "largeBottles": {
+                    "qty": large_bottle,
+                    "points": large_points,
+                    "price": large_points * 3
+                },
+                "smallBottles": {
+                    "qty": small_bottle,
+                    "points": small_points,
+                    "price": small_points * 3
+                }
+            },
+            "totalPrice": total_amount
+        }
+        print(body)
+        addReward(body)
         # Cut paper
         Gooj.cut()
     except Exception as e:
         print(f"Error: {e}")
 
+print_receipt_func(9999,5489465)

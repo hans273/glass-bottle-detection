@@ -18,7 +18,7 @@ tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.5)
 
 tracked_ids = set()
 bottle_count = 0
-ncnn_model = YOLO("models/epochs300_170_ncnn_model")
+ncnn_model = YOLO("models/epochs300_170_ncnn_model", task="detect")
 
 while True:
     success, img = cap.read()

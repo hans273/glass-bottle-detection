@@ -3,9 +3,6 @@ from PIL import Image
 from ultralytics import YOLO
 import cv2
 
-
-
-
 def start_detection():
     model = YOLO('./models/epochs200_192_best.pt')
 
